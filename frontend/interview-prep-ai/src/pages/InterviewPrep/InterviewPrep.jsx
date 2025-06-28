@@ -13,6 +13,8 @@ import QuestionCard from "../../components/Cards/QuestionCard";
 import Drawer from "../../components/Drawer";
 import SkeletonLoader from "../../components/Loader/SkeletonLoader";
 import AIResponsePreview from "./components/AIResponsePreview";
+import VoiceRecorder from "../../components/VoiceRecorder";
+import SimpleAnswerComparison from "../../components/SimpleAnswerComparison";
 
 const InterviewPrep = () => {
   const { sessionId } = useParams();
@@ -25,6 +27,16 @@ const InterviewPrep = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdateLoader, setIsUpdateLoader] = useState(false);
+
+  // Voice recording states
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentAnswer, setCurrentAnswer] = useState(null);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+
+  // Answer comparison states
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonResult, setComparisonResult] = useState(null);
 
   // Fetch session data by session id
   const fetchSessionDetailsById = async () => {
@@ -129,6 +141,74 @@ const InterviewPrep = () => {
     }
   };
 
+  // Handle voice answer
+  const handleVoiceAnswer = (question, answer) => {
+    setCurrentQuestion(question);
+    setCurrentAnswer(answer);
+    setShowVoiceRecorder(true);
+  };
+
+  const handleVoiceRecordingComplete = async (transcript, audioBlob) => {
+    try {
+      setIsProcessingVoice(true);
+      // Don't close modal immediately - keep it open to show loading and results
+
+      console.log('Sending voice analysis request:', {
+        question: currentQuestion,
+        userAnswer: transcript,
+        correctAnswer: currentAnswer
+      });
+
+      // Call API to compare answers
+      const response = await axiosInstance.post(API_PATHS.AI.COMPARE_ANSWER, {
+        question: currentQuestion,
+        userAnswer: transcript,
+        correctAnswer: currentAnswer,
+      });
+
+      console.log('API Response:', response.data);
+
+      if (response.data) {
+        setComparisonResult(response.data);
+        toast.success("Answer analyzed successfully!");
+      } else {
+        throw new Error('No data received from API');
+      }
+      
+    } catch (error) {
+      console.error("Error processing voice recording:", error);
+      
+      // Show more detailed error message
+      let errorMessage = "Failed to analyze answer. Please try again.";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      
+      // Show fallback modal with basic info
+      setComparisonResult({
+        score: 0,
+        feedback: "Unable to analyze your answer due to a technical error. Please try again.",
+        strengths: [],
+        weaknesses: [],
+        suggestions: [],
+        sampleAnswer: "Please try recording your answer again."
+      });
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  const closeVoiceRecorder = () => {
+    setShowVoiceRecorder(false);
+    setCurrentQuestion(null);
+    setCurrentAnswer(null);
+    setComparisonResult(null); // Reset comparison result when closing
+  };
+
   useEffect(() => {
     if (sessionId) {
       fetchSessionDetailsById();
@@ -187,6 +267,7 @@ const InterviewPrep = () => {
                         }
                         isPinned={data?.isPinned}
                         onTogglePin={() => toggleQuestionPinStatus(data._id)}
+                        onVoiceAnswer={handleVoiceAnswer}
                       />
 
                       {!isLoading &&
@@ -231,6 +312,21 @@ const InterviewPrep = () => {
             )}
           </Drawer>
         </div>
+
+        {/* Voice Recorder Modal */}
+        {showVoiceRecorder && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300">
+              <VoiceRecorder
+                onRecordingComplete={handleVoiceRecordingComplete}
+                isProcessing={isProcessingVoice}
+                question={currentQuestion}
+                comparisonResult={comparisonResult}
+                onClose={closeVoiceRecorder}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

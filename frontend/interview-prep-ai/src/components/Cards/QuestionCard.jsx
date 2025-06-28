@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { LuChevronDown, LuPin, LuPinOff, LuSparkles } from "react-icons/lu";
+import { LuChevronDown, LuPin, LuPinOff, LuSparkles, LuMic } from "react-icons/lu";
 import AIResponsePreview from "../../pages/InterviewPrep/components/AIResponsePreview";
 
 const QuestionCard = ({
@@ -8,6 +8,7 @@ const QuestionCard = ({
   onLearnMore,
   isPinned,
   onTogglePin,
+  onVoiceAnswer,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [height, setHeight] = useState(0);
@@ -25,6 +26,13 @@ const QuestionCard = ({
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
+
+  const handleVoiceAnswer = () => {
+    if (onVoiceAnswer) {
+      onVoiceAnswer(question, answer);
+    }
+  };
+
   return <>
       <div className="bg-white rounded-lg mb-4 overflow-hidden py-4 px-5 shadow-xl shadow-gray-100/70 border border-gray-100/60 group">
         <div className="flex items-start justify-between cursor-pointer">
@@ -47,6 +55,14 @@ const QuestionCard = ({
                 isExpanded ? "md:flex" : "md:hidden group-hover:flex"
               }`}
             >
+              <button
+                className="flex items-center gap-2 text-xs text-purple-800 font-medium bg-purple-50 px-3 py-1 mr-2 rounded text-nowrap border border-purple-50 hover:border-purple-200 cursor-pointer"
+                onClick={handleVoiceAnswer}
+              >
+                <LuMic className="text-xs" />
+                <span className="hidden md:block">Voice Answer</span>
+              </button>
+
               <button
                 className="flex items-center gap-2 text-xs text-indigo-800 font-medium bg-indigo-50 px-3 py-1 mr-2 rounded text-nowrap border border-indigo-50 hover:border-indigo-200 cursor-pointer"
                 onClick={onTogglePin}
